@@ -189,11 +189,8 @@ impl<'p> Parser<'p> {
               self.next()?;
 
               let result = Statement::new(
-                StatementNode::Assignment(
-                  Expression::new(
-                    ExpressionNode::Identifier(name.clone()),
-                    position.clone()
-                  ),
+                StatementNode::Variable(
+                  name.clone(),
 
                   self.parse_expression()?
                 ),
