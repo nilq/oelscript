@@ -30,7 +30,7 @@
     data () {
       return {
         output: "Output will be shown here.",
-        input: 'øl dict = {\n' +
+        input: 'iskold øl dict = {\n' +
                 '  nice: "stick a finger in the soil"\n' +
                 '  bad: "tuborg classic"\n' +
                 '}\n' +
