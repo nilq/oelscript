@@ -33,7 +33,7 @@ impl<'l> Lexer<'l> {
     lexer.matchers.push(
       Rc::new(
         KeyMatcher::new(Keyword, &[
-          "øl",
+          "øl", "iskold"
         ])
       )
     );

@@ -105,6 +105,29 @@ impl<'p> Parser<'p> {
       },
 
       Keyword => match self.current_lexeme().as_str() {
+        "iskold" => {
+          self.next()?;
+
+          let position = self.current_position().clone();
+
+          let mut potential_var = self.parse_statement()?;
+
+          if let StatementNode::Variable(ref left, ref right, _) = potential_var.node {
+            Statement::new(
+              StatementNode::Variable(left.to_owned(), right.to_owned(), true),
+              potential_var.pos
+            )
+          } else {
+            return Err(
+              response!(
+                Wrong(format!("invalid øldentifier!")),
+                self.source.file,
+                position
+              )
+            )
+          }
+        },
+
         "ølturn" => {
           self.next()?;
 
@@ -191,8 +214,8 @@ impl<'p> Parser<'p> {
               let result = Statement::new(
                 StatementNode::Variable(
                   name.clone(),
-
-                  self.parse_expression()?
+                  self.parse_expression()?,
+                  false
                 ),
                 position,
               );
@@ -201,19 +224,68 @@ impl<'p> Parser<'p> {
 
               return Ok(result)
             },
-            ref e => return Ok(
-              Statement::new(
-                StatementNode::Return(
-                  Some(
-                    Expression::new(
-                      e.clone(),
-                      expr.pos
+            ref e => {
+              let condition = Expression::new(
+                e.clone(),
+                expr.pos.clone()
+              );
+
+              if self.current_lexeme() == ":" {
+                self.next()?;
+
+                let pos = self.span_from(expr.pos);
+                let mut else_pos = position.clone();
+                let body = if self.current_lexeme() == "\n" {
+                  self.next()?;
+                  self.next_newline()?;
+
+                  self.parse_body()?
+                } else {
+                  vec!(self.parse_statement()?)
+                };
+
+                if self.current_lexeme() == "ølse" {
+                  let pos = self.current_position();
+
+                  self.next()?;
+                  self.eat_lexeme(":")?;
+
+                  let else_body = if self.current_lexeme() == "\n" {
+                    self.next()?;
+                    self.next_newline()?;
+
+                    self.parse_body()?
+                  } else {
+                    vec!(self.parse_statement()?)
+                  };
+
+                  return Ok(
+                    Statement::new(
+                      StatementNode::If(condition, body, Some((else_body, pos.clone()))),
+                      pos,
                     )
-                  ),
-                ),
-                self.span_from(position)
-              )
-            )
+                  )
+                } else {
+                  return Ok(
+                    Statement::new(
+                      StatementNode::If(condition, body, None),
+                      pos,
+                    )
+                  )
+                }
+              } else {
+                return Ok(
+                  Statement::new(
+                    StatementNode::Return(
+                      Some(
+                        condition
+                      ),
+                    ),
+                    self.span_from(position.clone())
+                  )
+                )
+              }
+            }
           };
 
           self.eat_lexeme("=")?;
@@ -439,65 +511,6 @@ impl<'p> Parser<'p> {
               self.current_position()
             )
           )
-        },
-
-        Keyword => match self.current_lexeme().as_str() {
-          "if" => {
-            self.next()?;
-
-            let condition   = Rc::new(self.parse_expression()?);
-            let if_position = self.span_from(position.clone());
-
-            self.eat_lexeme("\n")?;
-            self.next_newline()?;
-
-            let body        = self.parse_body()?;
-            let mut elses   = Vec::new();
-
-            loop {
-              let branch_position = self.current_position();
-
-              match self.current_lexeme().as_str() {
-                "elif" => {
-                  self.next()?;
-
-                  let condition = self.parse_expression()?;
-
-                  self.eat_lexeme("\n")?;
-                  self.next_newline()?;
-
-                  let body = self.parse_body()?;
-
-                  elses.push((Some(condition), body, branch_position))
-                },
-
-                "else" => {
-                  self.next()?;
-                  self.eat_lexeme("\n")?;
-                  self.next_newline()?;
-
-                  let body = self.parse_body()?;
-
-                  elses.push((None, body, branch_position))
-                },
-
-                _ => break,
-              }
-            }
-
-            Expression::new(
-              ExpressionNode::If(condition, body, if elses.len() > 0 { Some(elses) } else { None }),
-              if_position
-            )
-          },
-
-          ref symbol => panic!() /*return Err(
-            response!(
-              Wrong(format!("unexpected keyword `{}`", symbol)),
-              self.source.file,
-              self.current_position()
-            )
-          )*/
         },
 
         ref token_type => return Err(

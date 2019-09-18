@@ -6,11 +6,12 @@ use super::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum StatementNode {
   Expression(Expression),
-  Variable(String, Expression),
+  Variable(String, Expression, bool),
   Assignment(Expression, Expression),
   Return(Option<Expression>),
   Function(Expression, Vec<(String)>, Vec<Statement>),
   Import(String),
+  If(Expression, Vec<Statement>, Option<(Vec<Statement>, Pos)>),
   Skip,
   Break,
 }
@@ -46,7 +47,6 @@ pub enum ExpressionNode {
   Table(Vec<(String, Expression)>),
   Call(Rc<Expression>, Vec<Expression>),
   Index(Rc<Expression>, Rc<Expression>, bool), // bool: whether or not it's a method index
-  If(Rc<Expression>, Vec<Statement>, Option<Vec<(Option<Expression>, Vec<Statement>, Pos)>>),
   Empty,
   EOF,
 }

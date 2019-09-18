@@ -6,12 +6,12 @@
     </div>
     <v-card>
       <v-toolbar flat color="#dedede">
-        <v-btn rounded style="width: 100px !important;" class="luksus-button">Compile</v-btn>
+        <v-btn rounded style="width: 100px !important;" class="luksus-button" @click="compile">Compile</v-btn>
       </v-toolbar>
       <div id="editor" style="margin-top: -1px;">
         <textarea v-model="input" @input="update" @keydown="ignoreTab" ref="editor" class="oeleditor-editor" spellcheck="false" ></textarea>
         <div style="font-family: 'DejaVu Sans Mono'; padding: 15px; font-size: 14px;">
-          <p>Output will be shown here.</p>
+          <p>{{ output }}</p>
         </div>
       </div>
     </v-card>
@@ -19,6 +19,8 @@
 </template>
 
 <script>
+  const axios = require('axios');
+
   String.prototype.splice = function(idx, rem, str) {
     return this.slice(0, idx) + str + this.slice(idx + Math.abs(rem));
   }
@@ -27,6 +29,7 @@
     name: 'Editor',
     data () {
       return {
+        output: "Output will be shown here.",
         input: 'øl dict = {\n' +
                 '  nice: "stick a finger in the soil"\n' +
                 '  bad: "tuborg classic"\n' +
@@ -43,8 +46,16 @@
       }
     },
     methods: {
-      update () {
-
+      update () {},
+      compile () {
+        axios.post('http://localhost:8000/compile/', this.input, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          }
+        })
+        .then((response) => {
+          this.output = eval(response.data)
+        })
       },
       ignoreTab(e) {
         if (e.keyCode === 9) {

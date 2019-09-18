@@ -22,10 +22,14 @@ impl<'c> Compiler<'c> {
 
         match statement.node {
             Expression(ref expression) => self.generate_expression(expression),
-            Variable(ref left, ref right) => format!("var {} = {}", left, self.generate_expression(right)),
+            Variable(ref left, ref right, is_const) => if is_const {
+                format!("const {} = {}", left, self.generate_expression(right))
+            } else {
+                format!("var {} = {}", left, self.generate_expression(right))
+            },
             Assignment(ref left, ref right) => self.generate_assignment(left, right),
             Function(ref name, ref params, ref body) => {
-                let mut result = format!("const {} = function(", self.generate_expression(name));
+                let mut result = format!("let {} = function(", self.generate_expression(name));
 
                 for (i, param) in params.iter().enumerate() {
                     result.push_str(&param);
@@ -43,6 +47,30 @@ impl<'c> Compiler<'c> {
                 }
 
                 result.push_str("}");
+
+                result
+            },
+
+            If(ref condition, ref body, ref else_branch) => {
+                let mut result = format!("if ({}) {{", self.generate_expression(condition));
+
+                for statement in body {
+                    result.push_str(&format!("\t{};\n", self.generate_statement(statement)))
+                }
+
+                result.push('}');
+
+                if let Some(body) = else_branch {
+                    result.push_str("else {");
+
+                    for statement in body.0.iter() {
+                        result.push_str(&format!("\t{};\n", self.generate_statement(statement)))
+                    }
+
+                    result.push_str("}\n");
+                } else {
+                    result.push('\n');
+                }
 
                 result
             },
@@ -109,11 +137,11 @@ impl<'c> Compiler<'c> {
             },
 
             Array(ref content) => {
-                let mut result = "({\n".to_string();
+                let mut result = "[\n".to_string();
 
                 for (i, arg) in content.iter().enumerate() {
                     let value    = self.generate_expression(arg);
-                    let mut line = format!("[{}] = {}", i, value);
+                    let mut line = format!("{}", value);
 
                     if i < content.len() - 1 {
                         line.push(',')
@@ -122,7 +150,7 @@ impl<'c> Compiler<'c> {
                     result.push_str(&self.make_line(&line));
                 }
 
-                result.push_str("})");
+                result.push_str("]");
 
                 result
             },
@@ -130,13 +158,13 @@ impl<'c> Compiler<'c> {
             Index(ref source, ref index, _) => {
                 let source = self.generate_expression(source);
 
-                let index = if let Identifier(ref name) = index.node {
-                    format!("\"'{}\"", name)
+                if let Identifier(ref name) = index.node {
+                    format!("{}.{}", source, name)
                 } else {
-                    self.generate_expression(index)
-                };
+                    let right = self.generate_expression(index);
 
-                format!("{}[{}]", source, index)
+                    format!("{}[{}]", source, right)
+                }
             },
 
             Int(ref n)        => format!("{}", n),
